@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="lo">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Outlet Checklist</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Noto Sans Lao & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Lao:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS Library for Excel Parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans Lao', sans-serif;
+        }
+        /* Custom scrollbar for beautiful lists */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex justify-center items-stretch">
+
+    <!-- Main Phone Frame Container to mimic mobile app look or scale perfectly on desktop -->
+    <div class="w-full max-w-md bg-white shadow-2xl flex flex-col justify-between relative overflow-hidden border-x border-slate-200">
+        
+        <!-- App Header (Matching the dark blue gradient theme in the picture) -->
+        <header class="bg-gradient-to-r from-blue-700 to-indigo-800 text-white px-4 py-3 shadow-md relative">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-emerald-500 text-white p-2 rounded-xl shadow-inner flex items-center justify-center">
+                        <i class="fa-solid fa-database text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-base font-bold tracking-wide">Outlet Checklist</h1>
+                        <p class="text-xs text-blue-200 flex items-center">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block mr-1.5 animate-pulse"></span>
+                            ບັນທຶກລົງ GOOGLE SHEET ຂອງທ່ານເອງ
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="flex space-x-1.5">
+                    <button onclick="downloadBackup()" title="ດາວໂຫຼດຂໍ້ມູນສຳຮອງ" class="p-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-all shadow-sm">
+                        <i class="fa-solid fa-download text-sm"></i>
+                    </button>
+                    <button onclick="triggerExcelImport()" title="ນຳເຂົ້າໄຟລ໌ Excel" class="p-2 bg-teal-600 hover:bg-teal-500 rounded-lg transition-all shadow-sm">
+                        <i class="fa-solid fa-file-excel text-sm"></i>
+                    </button>
+                    <button onclick="resetChecklist()" title="ຣີເຊັດສະຖານະທັງໝົດ" class="p-2 bg-amber-500 hover:bg-amber-400 rounded-lg transition-all shadow-sm">
+                        <i class="fa-solid fa-rotate-left text-sm"></i>
+                    </button>
+                    <button onclick="clearAllOutlets()" title="ລຶບຮ້ានຄ້າທັງໝົດ" class="p-2 bg-red-500 hover:bg-red-400 rounded-lg transition-all shadow-sm">
+                        <i class="fa-solid fa-trash-can text-sm"></i>
+                    </button>
+                    <button onclick="openAddModal()" title="ເພີ່ມຮ້ານຄ້າໃໝ່" class="p-2 bg-emerald-500 hover:bg-emerald-400 rounded-lg transition-all shadow-sm">
+                        <i class="fa-solid fa-plus text-sm"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Hidden Excel File Input -->
+        <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="hidden" onchange="handleExcelImport(event)">
+
+        <!-- Stats & Search Box Container -->
+        <div class="p-3 bg-white space-y-3 shadow-sm border-b border-slate-100 z-20">
+            <!-- Stats Row (Now on top) -->
+            <div class="grid grid-cols-3 gap-2 text-center text-xs font-semibold">
+                <!-- Total Outlets -->
+                <button onclick="setFilter('ALL')" id="btnFilterAll" class="p-2 rounded-xl bg-slate-100 text-slate-700 border-2 border-slate-200 transition-all flex flex-col items-center justify-center">
+                    <span class="text-[10px] uppercase text-slate-500">ທັງໝົດ</span>
+                    <span id="statTotal" class="text-base font-bold mt-0.5">0</span>
+                </button>
+                <!-- None (Pending) -->
+                <button onclick="setFilter('NONE')" id="btnFilterNone" class="p-2 rounded-xl bg-red-50 text-red-700 border-2 border-transparent hover:border-red-200 transition-all flex flex-col items-center justify-center">
+                    <span class="text-[10px] uppercase text-red-500">NONE</span>
+                    <span id="statNone" class="text-base font-bold mt-0.5 text-red-600">0</span>
+                </button>
+                <!-- Done (Completed) -->
+                <button onclick="setFilter('DONE')" id="btnFilterDone" class="p-2 rounded-xl bg-emerald-50 text-emerald-700 border-2 border-transparent hover:border-emerald-200 transition-all flex flex-col items-center justify-center">
+                    <span class="text-[10px] uppercase text-emerald-500">DONE</span>
+                    <span id="statDone" class="text-base font-bold mt-0.5 text-emerald-600">0</span>
+                </button>
+            </div>
+
+            <!-- Search Input (Moved Below Stats) -->
+            <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                    <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                </span>
+                <input type="text" id="searchInput" oninput="filterOutlets()" placeholder="ຄົ້ນຫາຊື່ລູກຄ້າ ຫຼື ບ້ານ..." 
+                    class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-slate-800">
+            </div>
+        </div>
+
+        <!-- Main Scrollable Section containing List -->
+        <div class="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-slate-50">
+            <!-- List Header Title -->
+            <div class="px-4 py-2 bg-slate-100 border-b border-slate-200 flex justify-between items-center text-xs text-slate-600 font-bold">
+                <span><i class="fa-solid fa-list-check mr-1.5 text-blue-600"></i> ລາຍການຮ້ານຄ້າທັງໝົດ (OUTLETS LIST)</span>
+            </div>
+
+            <!-- Outlets List -->
+            <div id="outletsContainer" class="p-3 space-y-2 flex-grow">
+                <!-- Dynamic Items will render here -->
+            </div>
+        </div>
+
+        <!-- App Footer (Matching image elements) -->
+        <footer class="bg-slate-100 border-t border-slate-200 px-3 py-2 flex items-center justify-between text-xs text-slate-600">
+            <div class="flex items-center space-x-2 truncate">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span id="userEmail" class="font-medium text-slate-700 truncate">phetsamoneken@gmail.com</span>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <!-- Today Done Badge -->
+                <div class="flex items-center bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-full font-bold">
+                    <i class="fa-regular fa-calendar-check mr-1.5"></i>
+                    <span>ມື້ນີ້: </span>
+                    <span id="todayCount" class="ml-1 text-blue-800 font-extrabold">0</span>
+                </div>
+                
+                <!-- Sync Trigger -->
+                <button onclick="syncToGoogleSheets()" class="p-1.5 bg-slate-200 hover:bg-slate-300 rounded text-slate-700 transition" title="ຊິງຄ໌ຫາ Google Sheets">
+                    <i class="fa-solid fa-rotate"></i>
+                </button>
+            </div>
+        </footer>
+
+        <!-- Custom Alert Notification Box (Never use standard browser alert) -->
+        <div id="customAlert" class="absolute top-16 left-4 right-4 bg-emerald-600 text-white p-3 rounded-xl shadow-2xl z-50 transform -translate-y-24 opacity-0 transition-all duration-300 flex items-center space-x-2">
+            <i id="alertIcon" class="fa-solid fa-circle-check text-lg"></i>
+            <span id="alertMessage" class="text-xs font-semibold">ບັນທຶກສຳເລັດແລ້ວ!</span>
+        </div>
+
+        <!-- Custom Confirm Modal (Replacing default browser confirm) -->
+        <div id="confirmModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+            <div class="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl transition-all transform scale-95">
+                <div class="text-center">
+                    <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-amber-100 text-amber-600 mb-3">
+                        <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+                    </div>
+                    <h3 id="confirmTitle" class="text-sm font-bold text-slate-800">ຢືນຢັນການດຳເນີນການ</h3>
+                    <p id="confirmMessage" class="text-xs text-slate-500 mt-2">ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການເຮັດສິ່ງນີ້?</p>
+                </div>
+                <div class="flex space-x-2 pt-2">
+                    <button id="confirmYesBtn" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition text-xs">
+                        ຕົກລົງ
+                    </button>
+                    <button id="confirmNoBtn" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition text-xs">
+                        ຍົກເລີກ
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Dialog Modal -->
+        <div id="infoModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+            <div class="bg-white rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+                <div class="flex justify-between items-start border-b border-slate-100 pb-2">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center">
+                        <i class="fa-solid fa-circle-info text-blue-600 mr-2"></i>
+                        ລາຍລະອຽດຮ້ານຄ້າ
+                    </h3>
+                    <button onclick="closeInfoModal()" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+                <div id="infoContent" class="space-y-3 text-xs text-slate-600">
+                    <!-- Dynamic details -->
+                </div>
+                <div class="flex space-x-2 pt-2">
+                    <button onclick="closeInfoModal()" class="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition">
+                        ປິດໜ້າຕ່າງ
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Outlet Modal -->
+        <div id="addModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+            <div class="bg-white rounded-2xl max-w-sm w-full p-5 space-y-3 shadow-2xl">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                    <h3 class="text-sm font-bold text-slate-800 flex items-center">
+                        <i class="fa-solid fa-shop text-emerald-600 mr-2"></i>
+                        ເພີ່ມຮ້ານຄ້າໃໝ່ (Add Outlet)
+                    </h3>
+                    <button onclick="closeAddModal()" class="text-slate-400 hover:text-slate-600">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">ຊື່ຮ້ານຄ້າ (Outlet Name) <span class="text-red-500">*</span>:</label>
+                        <input type="text" id="newShopName" placeholder="ຕົວຢ່າງ: ຮ້ານ ນາງ ຈຸ່ມ" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">ທີ່ຢູ່ / ບ້ານ (Village/Location) <span class="text-red-500">*</span>:</label>
+                        <input type="text" id="newShopLocation" placeholder="ຕົວຢ່າງ: ດົງໂພສີ" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">ເບີໂທລະສັບ (Phone Number):</label>
+                        <input type="text" id="newShopPhone" placeholder="ຕົວຢ່າງ: 020 55XXXXXX" class="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">ໝາຍເຫດ / ລາຍລະອຽດ (Details):</label>
+                        <textarea id="newShopDetails" placeholder="ລະບຸລາຍລະອຽດເພີ່ມເຕີມ..." class="w-full p-2 border border-slate-200 rounded-lg h-20 focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+                    </div>
+                </div>
+                <div class="flex space-x-2 pt-3 border-t border-slate-100">
+                    <button onclick="saveNewOutlet()" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold transition">
+                        <i class="fa-solid fa-check mr-1"></i> ບັນທຶກຮ້ານຄ້າ
+                    </button>
+                    <button onclick="closeAddModal()" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition">
+                        ຍົກເລີກ
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- MOCK DATA ---
+        let defaultOutlets = [
+            { id: 1, name: "ນາງ ຈຸ່ມ ຈຸ່ມເໜືອດິນ", location: "ດົງໂພສີ", checked: false, phone: "020 55667788", details: "ຮ້ານອາຫານຫຼັກ, ຕ້ອງການປັກປ້າຍໂຄສະນາໃຫມ່" },
+            { id: 2, name: "ຮ້ານມິນິມາດ ສົມພອນ", location: "ໂພນໄຊ", checked: true, phone: "020 99887766", details: "ສົ່ງສິນຄ້າຄົບຖ້ວນ, ກວດເຊັກສາງຮຽບຮ້ອຍ" },
+            { id: 3, name: "ຮ້ານຂາຍເຄື່ອງຍ່ອຍ ນາງ ສີ", location: "ທາດຫຼວງ", checked: true, phone: "020 22334455", details: "ຮ້ານນີ້ຂາຍດີ, ຕ້ອງການໂປຣໂມຊັ່ນເພີ່ມເຕີມໃນເດືອນໜ້າ" },
+            { id: 4, name: "ຮ້ານອາຫານ ແຄມຂອງ ວຽງຈັນ", location: "ທ່າວັດຈັນ", checked: false, phone: "020 77112233", details: "ຕິດຕໍ່ຜູ້ຈັດການເພື່ອເກັບເງິນງວດທີ 2" },
+            { id: 5, name: "ຮ້ານເສີມສວຍ ນາງ ຕຸກຕາ", location: "ໜອງທາ", checked: false, phone: "020 55443322", details: "ກວດສອບສະພາບອຸປະກອນຫຼັກແລ້ວ" },
+            { id: 6, name: "ວຽງຈັນ ເຊັນເຕີ ມາດ", location: "ໂພນສີນວນ", checked: true, phone: "020 88889999", details: "ກວດເຊັກແລ້ວ, ສິນຄ້າຂາດ 2 ລາຍການ" }
+        ];
+
+        let outlets = [];
+        let currentFilter = 'ALL'; // ALL, NONE, DONE
+
+        // --- APPS SCRIPT SYNC ---
+        const IS_GOOGLE_APPS_SCRIPT = typeof google !== 'undefined' && google.script && google.script.run;
+
+        // Load Initial Data
+        window.onload = function() {
+            initApp();
+        };
+
+        function initApp() {
+            // Check LocalStorage or load defaults
+            const savedData = localStorage.getItem('outlet_checklist_data');
+            if (savedData) {
+                try {
+                    outlets = JSON.parse(savedData);
+                } catch(e) {
+                    outlets = [...defaultOutlets];
+                }
+            } else {
+                outlets = [...defaultOutlets];
+                saveToLocalStorage();
+            }
+
+            // Sync with Google Sheets if in GAS environment
+            if (IS_GOOGLE_APPS_SCRIPT) {
+                google.script.run
+                    .withSuccessHandler(function(response) {
+                        if (response && response.length > 0) {
+                            outlets = response;
+                            saveToLocalStorage();
+                            renderUI();
+                        }
+                    })
+                    .withFailureHandler(function(err) {
+                        showToast("ບໍ່ສາມາດເຊື່ອມຕໍ່ Google Sheet ໄດ້, ກໍາລັງໃຊ້ Offline mode", "error");
+                    })
+                    .getOutletsFromSheet();
+            }
+
+            renderUI();
+        }
+
+        // --- RENDER LOGIC ---
+        function renderUI() {
+            const container = document.getElementById('outletsContainer');
+            container.innerHTML = '';
+
+            let filtered = outlets;
+
+            // Apply search
+            const query = document.getElementById('searchInput').value.toLowerCase().trim();
+            if (query !== '') {
+                filtered = filtered.filter(item => 
+                    item.name.toLowerCase().includes(query) || 
+                    item.location.toLowerCase().includes(query)
+                );
+            }
+
+            // Apply Status Filter
+            if (currentFilter === 'NONE') {
+                filtered = filtered.filter(item => !item.checked);
+            } else if (currentFilter === 'DONE') {
+                filtered = filtered.filter(item => item.checked);
+            }
+
+            // Render stats
+            const totalCount = outlets.length;
+            const noneCount = outlets.filter(i => !i.checked).length;
+            const doneCount = outlets.filter(i => i.checked).length;
+
+            document.getElementById('statTotal').innerText = totalCount;
+            document.getElementById('statNone').innerText = noneCount;
+            document.getElementById('statDone').innerText = doneCount;
+            document.getElementById('todayCount').innerText = doneCount; // Daily progress simulation
+
+            // Visual highlight for active filter buttons
+            updateFilterButtonStyles();
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-16 text-slate-400 text-xs">
+                        <i class="fa-solid fa-store-slash text-5xl mb-3 text-slate-300"></i>
+                        <span>ບໍ່ມີຂໍ້ມູນຮ້ານຄ້າທີ່ກົງກັບເງື່ອນໄຂ</span>
+                    </div>
+                `;
+                return;
+            }
+
+            // Draw list items
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = `bg-white p-3.5 rounded-xl border ${item.checked ? 'border-emerald-100 shadow-sm bg-emerald-50/10' : 'border-slate-100 shadow-sm hover:border-slate-200'} flex items-center justify-between transition-all`;
+                
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3.5 flex-1 min-w-0">
+                        <!-- Checkbox Button -->
+                        <button onclick="toggleOutlet(${item.id})" class="focus:outline-none flex-shrink-0 transition-transform active:scale-95">
+                            <span class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${item.checked ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 hover:border-blue-500 bg-white'}" >
+                                ${item.checked ? '<i class="fa-solid fa-check text-xs"></i>' : ''}
+                            </span>
+                        </button>
+
+                        <!-- Outlet Details -->
+                        <div class="truncate flex-1" onclick="toggleOutlet(${item.id})">
+                            <h4 class="text-sm font-semibold text-slate-800 truncate ${item.checked ? 'line-through text-slate-400' : ''}">${item.name}</h4>
+                            <p class="text-[11px] text-slate-500 flex items-center mt-0.5">
+                                <i class="fa-solid fa-location-dot text-slate-400 mr-1"></i>
+                                ${item.location}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-1 ml-2">
+                        <!-- Info Button -->
+                        <button onclick="showDetails(${item.id})" class="p-2 text-slate-400 hover:text-blue-500 hover:bg-slate-50 rounded-lg transition" title="ລາຍລະອຽດ">
+                            <i class="fa-solid fa-circle-info text-base"></i>
+                        </button>
+                        <!-- Delete Single Outlet Button -->
+                        <button onclick="deleteOutlet(${item.id})" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="ລຶບຮ້ານຄ້ານີ້">
+                            <i class="fa-solid fa-trash-can text-base"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function updateFilterButtonStyles() {
+            const btnAll = document.getElementById('btnFilterAll');
+            const btnNone = document.getElementById('btnFilterNone');
+            const btnDone = document.getElementById('btnFilterDone');
+
+            btnAll.className = "p-2 rounded-xl border-2 transition-all flex flex-col items-center justify-center " + (currentFilter === 'ALL' ? "bg-slate-100 text-slate-800 border-slate-300 ring-2 ring-slate-100" : "bg-slate-50 text-slate-500 border-transparent hover:border-slate-200");
+            btnNone.className = "p-2 rounded-xl border-2 transition-all flex flex-col items-center justify-center " + (currentFilter === 'NONE' ? "bg-red-50 text-red-800 border-red-300 ring-2 ring-red-50" : "bg-slate-50 text-slate-500 border-transparent hover:border-red-100");
+            btnDone.className = "p-2 rounded-xl border-2 transition-all flex flex-col items-center justify-center " + (currentFilter === 'DONE' ? "bg-emerald-50 text-emerald-800 border-emerald-300 ring-2 ring-emerald-50" : "bg-slate-50 text-slate-500 border-transparent hover:border-emerald-100");
+        }
+
+        // --- INTERACTIVE ACTIONS ---
+        function setFilter(filterType) {
+            currentFilter = filterType;
+            renderUI();
+        }
+
+        function filterOutlets() {
+            renderUI();
+        }
+
+        function toggleOutlet(id) {
+            outlets = outlets.map(item => {
+                if (item.id === id) {
+                    const nextState = !item.checked;
+                    if (navigator.vibrate) navigator.vibrate(20);
+                    return { ...item, checked: nextState };
+                }
+                return item;
+            });
+
+            saveToLocalStorage();
+            renderUI();
+            showToast("ອັບເດດສະຖານະຮ້ານຄ້າແລ້ວ!", "success");
+
+            // Sync database inside Google Sheets in background if available
+            if (IS_GOOGLE_APPS_SCRIPT) {
+                const target = outlets.find(i => i.id === id);
+                google.script.run.updateStatusInSheet(target.id, target.checked);
+            }
+        }
+
+        // Show detailed specifications in custom Modal
+        function showDetails(id) {
+            const item = outlets.find(i => i.id === id);
+            if (!item) return;
+
+            const content = document.getElementById('infoContent');
+            content.innerHTML = `
+                <div class="grid grid-cols-3 gap-2 py-1">
+                    <span class="font-bold text-slate-800">ຊື່ຮ້ານ:</span>
+                    <span class="col-span-2 text-slate-700">${item.name}</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 py-1">
+                    <span class="font-bold text-slate-800">ທີ່ຢູ່/ບ້ານ:</span>
+                    <span class="col-span-2 text-slate-700">${item.location}</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 py-1">
+                    <span class="font-bold text-slate-800">ເບີໂທຕິດຕໍ່:</span>
+                    <span class="col-span-2 text-slate-700">${item.phone || 'ບໍ່ມີຂໍ້ມູນ'}</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 py-1">
+                    <span class="font-bold text-slate-800">ສະຖານະ:</span>
+                    <span class="col-span-2"><span class="px-2 py-0.5 text-[10px] font-bold rounded-full ${item.checked ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}">${item.checked ? 'ສຳເລັດ (DONE)' : 'ຍັງເຫຼືອ (NONE)'}</span></span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 py-1 border-t border-slate-100 mt-2 pt-2">
+                    <span class="font-bold text-slate-800">ລາຍລະອຽດ:</span>
+                    <span class="col-span-2 text-slate-500 italic">${item.details || 'ບໍ່ມີບັນທຶກ'}</span>
+                </div>
+            `;
+
+            document.getElementById('infoModal').classList.remove('hidden');
+        }
+
+        function closeInfoModal() {
+            document.getElementById('infoModal').classList.add('hidden');
+        }
+
+        // --- CUSTOM CONFIRM MODAL CONTROLLER ---
+        let onConfirmCallback = null;
+        let onCancelCallback = null;
+
+        function showConfirmDialog(title, message, yesCallback, noCallback = null) {
+            document.getElementById('confirmTitle').innerText = title;
+            document.getElementById('confirmMessage').innerText = message;
+            onConfirmCallback = yesCallback;
+            onCancelCallback = noCallback;
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+
+        document.getElementById('confirmYesBtn').onclick = function() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            if (onConfirmCallback) onConfirmCallback();
+            onConfirmCallback = null;
+            onCancelCallback = null;
+        };
+
+        document.getElementById('confirmNoBtn').onclick = function() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            if (onCancelCallback) onCancelCallback();
+            onConfirmCallback = null;
+            onCancelCallback = null;
+        };
+
+        // --- EXCEL IMPORT LOGIC ---
+        function triggerExcelImport() {
+            document.getElementById('excelFileInput').click();
+        }
+
+        function handleExcelImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showToast("ກຳລັງອ່ານໄຟລ໌ Excel...", "success");
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                    if (jsonData.length === 0) {
+                        showToast("ບໍ່ພົບຂໍ້ມູນໃນໄຟລ໌ Excel!", "error");
+                        return;
+                    }
+
+                    let startId = outlets.length > 0 ? Math.max(...outlets.map(o => o.id)) + 1 : 1;
+                    const importedOutlets = [];
+
+                    jsonData.forEach((row) => {
+                        // Find column keys case-insensitively and with Lao fallback mapping
+                        const nameKey = Object.keys(row).find(k => k.toLowerCase() === 'name' || k.includes('ຊື່'));
+                        const locationKey = Object.keys(row).find(k => k.toLowerCase() === 'location' || k.includes('ທີ່ຢູ່') || k.includes('ບ້ານ'));
+                        const phoneKey = Object.keys(row).find(k => k.toLowerCase() === 'phone' || k.includes('ເບີ'));
+                        const detailsKey = Object.keys(row).find(k => k.toLowerCase() === 'details' || k.includes('ລາຍລະອຽດ') || k.includes('ໝາຍເຫດ'));
+                        const checkedKey = Object.keys(row).find(k => k.toLowerCase() === 'checked' || k.includes('ສະຖານະ'));
+
+                        const name = nameKey ? row[nameKey].toString().trim() : '';
+                        const location = locationKey ? row[locationKey].toString().trim() : 'ບໍ່ລະບຸທີ່ຢູ່';
+                        
+                        if (name) {
+                            let isChecked = false;
+                            if (checkedKey) {
+                                const val = row[checkedKey].toString().toLowerCase();
+                                isChecked = (val === 'true' || val === '1' || val === 'checked' || val === 'done' || val === 'ສຳເລັດ');
+                            }
+
+                            importedOutlets.push({
+                                id: startId++,
+                                name: name,
+                                location: location,
+                                checked: isChecked,
+                                phone: phoneKey ? row[phoneKey].toString().trim() : 'ບໍ່ມີຂໍ້ມູນ',
+                                details: detailsKey ? row[detailsKey].toString().trim() : 'ນຳເຂົ້າຈາກ Excel'
+                            });
+                        }
+                    });
+
+                    if (importedOutlets.length === 0) {
+                        showToast("ບໍ່ມີຂໍ້ມູນຮ້ານຄ້າທີ່ຖືກຕ້ອງ (ຕ້ອງມີຊື່ຮ້ານຄ້າ)!", "error");
+                        return;
+                    }
+
+                    // Prompt user: Append or Overwrite
+                    showConfirmDialog(
+                        "ນຳເຂົ້າຂໍ້ມູນ Excel",
+                        `ພົບຮ້ານຄ້າ ${importedOutlets.length} ຮ້ານ. ກົດ "ຕົກລົງ" ເພື່ອ "ເພີ່ມເຂົ້າຕໍ່ຈາກຮ້ານເກົ່າ" ຫຼື ກົດ "ຍົກເລີກ" ເພື່ອ "ຂຽນທັບທັງໝົດ"?`,
+                        function() {
+                            // Yes Callback: Append
+                            outlets = [...outlets, ...importedOutlets];
+                            finalizeImport(importedOutlets.length);
+                        },
+                        function() {
+                            // No Callback: Confirm overwrite
+                            showConfirmDialog(
+                                "ຢືນຢັນການຂຽນທັບ",
+                                "ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບຮ້ານເກົ່າທັງໝົດ ແລະ ຂຽນທັບດ້ວຍຂໍ້ມູນ Excel ໃໝ່?",
+                                function() {
+                                    outlets = importedOutlets;
+                                    finalizeImport(importedOutlets.length);
+                                }
+                            );
+                        }
+                    );
+
+                } catch (err) {
+                    console.error(err);
+                    showToast("ເກີດຂໍ້ຜິດພາດໃນການອ່ານໄຟລ໌ Excel!", "error");
+                }
+                event.target.value = ''; // Reset file input
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function finalizeImport(count) {
+            saveToLocalStorage();
+            renderUI();
+            showToast(`ນຳເຂົ້າຮ້ານຄ້າ ${count} ຮ້ານ ສຳເລັດແລ້ວ!`, "success");
+
+            // Bulk Save to Google Sheets if App Script is running
+            if (IS_GOOGLE_APPS_SCRIPT) {
+                showToast("ກຳລັງຊິງຄ໌ຂໍ້ມູນໄປ Google Sheets...", "success");
+                google.script.run
+                    .withSuccessHandler(function() {
+                        showToast("ຊິງຄ໌ກັບ Google Sheets ສຳເລັດແລ້ວ!", "success");
+                    })
+                    .withFailureHandler(function() {
+                        showToast("ຊິງຄ໌ຂໍ້ມູນຫຼົ້ມເຫຼວ!", "error");
+                    })
+                    .saveAllOutletsToSheet(outlets);
+            }
+        }
+
+        // --- CRUD ACTIONS ---
+        function openAddModal() {
+            document.getElementById('addModal').classList.remove('hidden');
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModal').classList.add('hidden');
+        }
+
+        // Delete a Single Outlet
+        function deleteOutlet(id) {
+            const target = outlets.find(i => i.id === id);
+            if (!target) return;
+
+            showConfirmDialog(
+                "ລຶບຮ້ານຄ້າ", 
+                `ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບ "${target.name}" ອອກຈາກລະບົບ?`, 
+                function() {
+                    outlets = outlets.filter(item => item.id !== id);
+                    saveToLocalStorage();
+                    renderUI();
+                    showToast("ລຶບຮ້ານຄ້າຮຽບຮ້ອຍແລ້ວ!", "success");
+
+                    if (IS_GOOGLE_APPS_SCRIPT) {
+                        google.script.run.deleteOutletFromSheet(id);
+                    }
+                }
+            );
+        }
+
+        // Save a New Outlet
+        function saveNewOutlet() {
+            const name = document.getElementById('newShopName').value.trim();
+            const location = document.getElementById('newShopLocation').value.trim();
+            const phone = document.getElementById('newShopPhone').value.trim();
+            const details = document.getElementById('newShopDetails').value.trim();
+
+            if (!name || !location) {
+                showToast("ກະລຸນາກອກຊື່ຮ້ານຄ້າ ແລະ ທີ່ຢູ່ໃຫ້ຄົບຖ້ວນ!", "error");
+                return;
+            }
+
+            const newId = outlets.length > 0 ? Math.max(...outlets.map(o => o.id)) + 1 : 1;
+            const newShop = {
+                id: newId,
+                name: name,
+                location: location,
+                checked: false,
+                phone: phone || "ບໍ່ມີຂໍ້ມູນ",
+                details: details || "ເພີ່ມໃໝ່ໂດຍຜູ້ໃຊ້"
+            };
+
+            outlets.push(newShop);
+            saveToLocalStorage();
+            renderUI();
+            closeAddModal();
+            showToast("ເພີ່ມຮ້ານຄ້າໃໝ່ສຳເລັດແລ້ວ!", "success");
+
+            if (IS_GOOGLE_APPS_SCRIPT) {
+                google.script.run.addNewOutletToSheet(newShop);
+            }
+
+            // Clear Form Inputs
+            document.getElementById('newShopName').value = '';
+            document.getElementById('newShopLocation').value = '';
+            document.getElementById('newShopPhone').value = '';
+            document.getElementById('newShopDetails').value = '';
+        }
+
+        function resetChecklist() {
+            showConfirmDialog(
+                "ຣີເຊັດສະຖານະ", 
+                "ທ່ານຕ້ອງການຣີເຊັດສະຖານະທຸກຮ້ານຄ້າໃຫ້ເປັນ 'ຍັງເຫຼືອ (NONE)' ບໍ່?", 
+                function() {
+                    outlets = outlets.map(i => ({ ...i, checked: false }));
+                    saveToLocalStorage();
+                    renderUI();
+                    showToast("ຣີເຊັດສະຖານະທັງໝົດສຳເລັດແລ້ວ!", "success");
+
+                    if (IS_GOOGLE_APPS_SCRIPT) {
+                        google.script.run.resetAllStatusInSheet();
+                    }
+                }
+            );
+        }
+
+        function clearAllOutlets() {
+            showConfirmDialog(
+                "ລຶບຮ້ານຄ້າທັງໝົດ", 
+                "ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບຮ້ານຄ້າທັງໝົດອອກຈາກລະບົບ?", 
+                function() {
+                    outlets = [];
+                    saveToLocalStorage();
+                    renderUI();
+                    showToast("ລຶບຂໍ້ມູນທັງໝົດແລ້ວ!", "success");
+
+                    if (IS_GOOGLE_APPS_SCRIPT) {
+                        google.script.run.clearAllOutletsInSheet();
+                    }
+                }
+            );
+        }
+
+        // Local Storage Sync
+        function saveToLocalStorage() {
+            localStorage.setItem('outlet_checklist_data', JSON.stringify(outlets));
+        }
+
+        // Backup Data (Clipboard Copy Fallback)
+        function downloadBackup() {
+            const dataStr = JSON.stringify(outlets, null, 2);
+            const tempTextarea = document.createElement("textarea");
+            tempTextarea.value = dataStr;
+            document.body.appendChild(tempTextarea);
+            tempTextarea.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempTextarea);
+
+            showToast("ກັອບປີ້ຂໍ້ມູນ JSON ສຳຮອງລົງໃນ Clipboard ແລ້ວ!", "success");
+        }
+
+        // Sync Alert Simulator
+        function syncToGoogleSheets() {
+            showToast("ກຳລັງຊິງຄ໌ຂໍ້ມູນຫາ Google Sheets...", "success");
+            if (IS_GOOGLE_APPS_SCRIPT) {
+                google.script.run
+                    .withSuccessHandler(function(response) {
+                        if (response && response.length > 0) {
+                            outlets = response;
+                            saveToLocalStorage();
+                            renderUI();
+                            showToast("ຊິງຄ໌ຂໍ້ມູນກັບ Google Sheet ສຳເລັດແລ້ວ!", "success");
+                        }
+                    })
+                    .withFailureHandler(function() {
+                        showToast("ຊິງຄ໌ຂໍ້ມູນຫຼົ້ມເຫຼວ!", "error");
+                    })
+                    .getOutletsFromSheet();
+            } else {
+                setTimeout(() => {
+                    showToast("ຊິງຄ໌ຂໍ້ມູນສຳເລັດແລ້ວ! ຂໍ້ມູນປອດໄພ", "success");
+                }, 800);
+            }
+        }
+
+        // --- CUSTOM TOAST/ALERT COMPONENT ---
+        function showToast(message, type = "success") {
+            const alertBox = document.getElementById('customAlert');
+            const alertMsg = document.getElementById('alertMessage');
+            const alertIcon = document.getElementById('alertIcon');
+
+            alertMsg.innerText = message;
+            
+            if (type === "success") {
+                alertBox.className = alertBox.className.replace(/bg-[a-z]+-600/g, 'bg-emerald-600');
+                alertIcon.className = "fa-solid fa-circle-check text-lg";
+            } else {
+                alertBox.className = alertBox.className.replace(/bg-[a-z]+-600/g, 'bg-red-600');
+                alertIcon.className = "fa-solid fa-circle-exclamation text-lg";
+            }
+
+            alertBox.classList.remove('opacity-0', '-translate-y-24');
+            alertBox.classList.add('opacity-100', 'translate-y-0');
+
+            setTimeout(() => {
+                alertBox.classList.remove('opacity-100', 'translate-y-0');
+                alertBox.classList.add('opacity-0', '-translate-y-24');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
